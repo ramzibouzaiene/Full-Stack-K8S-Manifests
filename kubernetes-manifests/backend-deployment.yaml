@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: argocd
+  labels:
+    app: backend-release
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-release
+  template:
+    metadata:
+      labels:
+        app: backend-release
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: backend-container
+        image: registry.gitlab.com/personal-projects9993536/workshop-demo/backend-image:1660c5fd454bd1dd8f50272819fd4aea563fa2c9
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: '250Mi'
+            cpu: '500m'
+          limits:
+            memory: '512Mi'
+            cpu: '500m'
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: 'jdbc:postgresql://postgres:5432/users_db'
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_USER
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          value: 'org.postgresql.Driver'
+        - name: SPRING_JPA_DATABASE_PLATFORM
+          value: 'org.hibernate.dialect.PostgreSQLDialect'
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: 'update'
+        - name: SPRING_JPA_SHOW_SQL
+          value: 'true'
+        - name: SPRING_MAIN_ALLOW_CIRCULAR_REFERENCES
+          value: 'true'
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 15
+      imagePullSecrets:
+      - name: gitlab-registry-secret
